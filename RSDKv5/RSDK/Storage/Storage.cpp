@@ -1,5 +1,7 @@
 #include "RSDK/Core/RetroEngine.hpp"
 
+using namespace RSDK;
+
 #if RETRO_REV0U
 #include "Legacy/UserStorageLegacy.cpp"
 #endif
@@ -7,8 +9,6 @@
 // Macro to access the header variables of a block of memory.
 // Note that this is pointless if the pointer is already pointing directly at the header rather than the memory after it.
 #define HEADER(memory, header_value) memory[-HEADER_SIZE + header_value]
-
-using namespace RSDK;
 
 // Every block of allocated memory is prefixed with a header that consists of the following four longwords.
 enum {
@@ -87,7 +87,13 @@ void RSDK::AllocateStorage(void **dataPtr, uint32 size, StorageDataSets dataSet,
         if (dataStorage[dataSet].entryCount < STORAGE_ENTRY_COUNT) {
             DataStorage *storage = &dataStorage[dataSet];
 
+#if !RETRO_USE_ORIGINAL_CODE
+            // Bug: The original release never takes into account the size of the header when checking if there's enough storage left.
+            // Omitting this will overflow the memory pool when (storageLimit - usedStorage + size) < header size (16 bytes here).
+            if (storage->usedStorage * sizeof(uint32) + size + (HEADER_SIZE * sizeof(uint32)) < storage->storageLimit) {
+#else
             if (storage->usedStorage * sizeof(uint32) + size < storage->storageLimit) {
+#endif
                 // HEADER_ACTIVE
                 storage->memoryTable[storage->usedStorage] = true;
                 ++storage->usedStorage;
@@ -118,7 +124,11 @@ void RSDK::AllocateStorage(void **dataPtr, uint32 size, StorageDataSets dataSet,
 
                 // If there is now room, then perform allocation.
                 // Yes, this really is a massive chunk of duplicate code.
+#if !RETRO_USE_ORIGINAL_CODE
+                if (storage->usedStorage * sizeof(uint32) + size + (HEADER_SIZE * sizeof(uint32)) < storage->storageLimit) {
+#else
                 if (storage->usedStorage * sizeof(uint32) + size < storage->storageLimit) {
+#endif
                     // HEADER_ACTIVE
                     storage->memoryTable[storage->usedStorage] = true;
                     ++storage->usedStorage;
@@ -163,10 +173,18 @@ void RSDK::RemoveStorageEntry(void **dataPtr)
 
         uint32 set = HEADER(data, HEADER_SET_ID);
         for (int32 e = 0; e < dataStorage[set].entryCount; ++e) {
+#if !RETRO_USE_ORIGINAL_CODE
+            // make sure dataEntries[e] isn't null. If it is null by some ungodly chance then it was prolly already freed or something idk
+            if (dataStorage[HEADER(data, HEADER_SET_ID)].dataEntries[e] && *dataPtr == *dataStorage[HEADER(data, HEADER_SET_ID)].dataEntries[e]) {
+                *dataStorage[HEADER(data, HEADER_SET_ID)].dataEntries[e] = NULL;
+                dataStorage[HEADER(data, HEADER_SET_ID)].dataEntries[e]  = NULL;
+            }
+#else
             if (*dataPtr == *dataStorage[HEADER(data, HEADER_SET_ID)].dataEntries[e]) {
                 *dataStorage[HEADER(data, HEADER_SET_ID)].dataEntries[e] = NULL;
                 dataStorage[HEADER(data, HEADER_SET_ID)].dataEntries[e]  = NULL;
             }
+#endif
 
             set = HEADER(data, HEADER_SET_ID);
         }
@@ -266,8 +284,16 @@ void RSDK::DefragmentAndGarbageCollectStorage(StorageDataSets set)
 
             // Find every single pointer to this memory allocation and update them with its new address.
             for (int32 c = 0; c < dataStorage[set].entryCount; ++c)
+
+#if !RETRO_USE_ORIGINAL_CODE
+                // make sure dataEntries[e] isn't null. If it is null by some ungodly chance then it was prolly already freed or something idk
+                if (dataPtr == dataStorage[set].storageEntries[c] && dataStorage[set].dataEntries[c])
+                    dataStorage[set].storageEntries[c] = *dataStorage[set].dataEntries[c] = currentHeader + HEADER_SIZE;
+#else
                 if (dataPtr == dataStorage[set].storageEntries[c])
                     dataStorage[set].storageEntries[c] = *dataStorage[set].dataEntries[c] = currentHeader + HEADER_SIZE;
+#endif
+
 
             // Update the offset in the allocation's header too.
             currentHeader[HEADER_DATA_OFFSET] = dataOffset + HEADER_SIZE;

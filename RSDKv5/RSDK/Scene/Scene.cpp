@@ -1,10 +1,10 @@
 #include "RSDK/Core/RetroEngine.hpp"
 
+using namespace RSDK;
+
 #if RETRO_REV0U
 #include "Legacy/SceneLegacy.cpp"
 #endif
-
-using namespace RSDK;
 
 uint8 RSDK::tilesetPixels[TILESET_SIZE * 4];
 
@@ -23,6 +23,10 @@ SceneInfo RSDK::sceneInfo;
 
 void RSDK::LoadSceneFolder()
 {
+#if RETRO_PLATFORM == RETRO_ANDROID
+    ShowLoadingIcon();
+#endif
+
 #if RETRO_USE_MOD_LOADER
     // run this before the game actually unloads all the objects & scene assets
     RunModCallbacks(MODCB_ONSTAGEUNLOAD, NULL);
@@ -152,11 +156,11 @@ void RSDK::LoadSceneFolder()
     char fullFilePath[0x40];
 
     // Load TileConfig
-    sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Stages/%s/TileConfig.bin", currentSceneFolder);
+    sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Stages/%s/TileConfig.bin", currentSceneFolder);
     LoadTileConfig(fullFilePath);
 
     // Load StageConfig
-    sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Stages/%s/StageConfig.bin", currentSceneFolder);
+    sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Stages/%s/StageConfig.bin", currentSceneFolder);
 
     FileInfo info;
     InitFileInfo(&info);
@@ -261,7 +265,7 @@ void RSDK::LoadSceneFolder()
         CloseFile(&info);
     }
 
-    sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Stages/%s/16x16Tiles.gif", currentSceneFolder);
+    sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Stages/%s/16x16Tiles.gif", currentSceneFolder);
     LoadStageGIF(fullFilePath);
 
 #if RETRO_USE_MOD_LOADER
@@ -278,11 +282,15 @@ void RSDK::LoadSceneFolder()
 }
 void RSDK::LoadSceneAssets()
 {
+#if RETRO_PLATFORM == RETRO_ANDROID
+    ShowLoadingIcon();
+#endif
+
     memset(objectEntityList, 0, ENTITY_COUNT * sizeof(EntityBase));
 
     SceneListEntry *sceneEntry = &sceneInfo.listData[sceneInfo.listPos];
     char fullFilePath[0x40];
-    sprintf_s(fullFilePath, (int32)sizeof(fullFilePath), "Data/Stages/%s/Scene%s.bin", currentSceneFolder, sceneEntry->id);
+    sprintf_s(fullFilePath, sizeof(fullFilePath), "Data/Stages/%s/Scene%s.bin", currentSceneFolder, sceneEntry->id);
 
     dataStorage[DATASET_TMP].usedStorage = 0;
 
@@ -396,8 +404,8 @@ void RSDK::LoadSceneAssets()
 
             layer->layout = NULL;
             if (layer->xsize || layer->ysize) {
-                AllocateStorage((void **)&layer->layout, sizeof(uint16) * (1 << layer->widthShift) * (1 << layer->heightShift), DATASET_STG, true);
-                memset(layer->layout, 0xFF, sizeof(uint16) * (1 << layer->widthShift) * (1 << layer->heightShift));
+                AllocateStorage((void **)&layer->layout, sizeof(uint16) * (1UL << layer->widthShift) * (1UL << layer->heightShift), DATASET_STG, true);
+                memset(layer->layout, 0xFF, sizeof(uint16) * (1UL << layer->widthShift) * (1UL << layer->heightShift));
             }
 
             int32 size = layer->xsize;
@@ -420,6 +428,9 @@ void RSDK::LoadSceneAssets()
             uint8 *scrollIndexes = NULL;
             ReadCompressed(&info, (uint8 **)&scrollIndexes);
             memcpy(layer->lineScroll, scrollIndexes, TILE_SIZE * size * sizeof(uint8));
+#if !RETRO_USE_ORIGINAL_CODE
+            RemoveStorageEntry((void **)&scrollIndexes);
+#endif
             scrollIndexes = NULL;
 
             uint8 *tileLayout = NULL;
@@ -433,6 +444,9 @@ void RSDK::LoadSceneAssets()
                 }
             }
 
+#if !RETRO_USE_ORIGINAL_CODE
+            RemoveStorageEntry((void **)&tileLayout);
+#endif
             tileLayout = NULL;
         }
 
@@ -598,7 +612,7 @@ void RSDK::LoadSceneAssets()
                                 String *string = (String *)&entityBuffer[varList[v].offset];
                                 uint16 len     = ReadInt16(&info);
 
-                                InitString(string, (char *)"", len);
+                                InitString(string, "", len);
                                 for (string->length = 0; string->length < len; ++string->length) string->chars[string->length] = ReadInt16(&info);
                             }
                             else {
@@ -650,6 +664,11 @@ void RSDK::LoadSceneAssets()
                     }
                 }
             }
+
+#if !RETRO_USE_ORIGINAL_CODE
+            RemoveStorageEntry((void **)&varList);
+            varList = NULL;
+#endif
         }
 
 #if RETRO_REV02
@@ -680,9 +699,15 @@ void RSDK::LoadSceneAssets()
                 break;
         }
 
+#if !RETRO_USE_ORIGINAL_CODE
+        RemoveStorageEntry((void **)&tempEntityList);
+#endif
         tempEntityList = NULL;
 #endif
 
+#if !RETRO_USE_ORIGINAL_CODE
+        RemoveStorageEntry((void **)&editableVarList);
+#endif
         editableVarList = NULL;
 
         CloseFile(&info);
@@ -921,6 +946,10 @@ void RSDK::LoadTileConfig(char *filepath)
             }
         }
 
+#if !RETRO_USE_ORIGINAL_CODE
+        RemoveStorageEntry((void **)&buffer);
+        buffer = NULL;
+#endif
         CloseFile(&info);
     }
 }
@@ -979,8 +1008,10 @@ void RSDK::LoadStageGIF(char *filepath)
             dstPixels += (TILE_SIZE * 2);
         }
 
+#if RETRO_USE_ORIGINAL_CODE
         tileset.palette = NULL;
         tileset.decoder = NULL;
+#endif
         tileset.pixels  = NULL;
     }
 }

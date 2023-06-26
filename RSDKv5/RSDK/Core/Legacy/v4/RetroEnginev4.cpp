@@ -60,13 +60,17 @@ bool32 RSDK::Legacy::v4::LoadGameConfig(const char *filepath)
             RSDK::Legacy::LoadSfx(strBuffer, s, SCOPE_GLOBAL);
         }
 
+#if RETRO_USE_MOD_LOADER
+        RSDK::Legacy::v4::LoadXMLSoundFX();
+#endif
+
         // Read Player Names
         uint8 plrCount = ReadInt8(&info);
         for (uint8 p = 0; p < plrCount; ++p) {
             ReadString(&info, strBuffer);
 
-            // needed for PlayerName[] stuff in scripts
 #if RETRO_USE_MOD_LOADER
+            // needed for PlayerName[] stuff in scripts
             StrCopy(modSettings.playerNames[p], strBuffer);
             modSettings.playerCount++;
 #endif
@@ -600,7 +604,7 @@ int32 RSDK::Legacy::v4::LoadXMLStages(int32 mode, int32 gcStageCount)
                 const char *categoryNames[]             = {
                     "Presentation",
                     "Regular",
-                    "Special"
+                    "Special",
                     "Bonus",
                 };
 
@@ -611,7 +615,7 @@ int32 RSDK::Legacy::v4::LoadXMLStages(int32 mode, int32 gcStageCount)
 
                         SceneListInfo *list = &sceneInfo.listCategory[l];
                         if (!mode) {
-                            sprintf_s(list->name, (int32)sizeof(list->name), "%s", categoryNames[l]);
+                            sprintf_s(list->name, sizeof(list->name), "%s", categoryNames[l]);
                             GEN_HASH_MD5(list->name, list->hash);
 
                             list->sceneOffsetStart = gcStageCount;
@@ -639,10 +643,10 @@ int32 RSDK::Legacy::v4::LoadXMLStages(int32 mode, int32 gcStageCount)
 
                                     SceneListEntry *scene = &sceneInfo.listData[gcStageCount];
 
-                                    sprintf_s(scene->name, (int32)sizeof(scene->name), "%s", stgName);
+                                    sprintf_s(scene->name, sizeof(scene->name), "%s", stgName);
                                     GEN_HASH_MD5(scene->name, scene->hash);
-                                    sprintf_s(scene->folder, (int32)sizeof(scene->folder), "%s", stgFolder);
-                                    sprintf_s(scene->id, (int32)sizeof(scene->id), "%s", stgID);
+                                    sprintf_s(scene->folder, sizeof(scene->folder), "%s", stgFolder);
+                                    sprintf_s(scene->id, sizeof(scene->id), "%s", stgID);
 
                                     scene->filter = 0xFF;
 
@@ -655,7 +659,6 @@ int32 RSDK::Legacy::v4::LoadXMLStages(int32 mode, int32 gcStageCount)
 
                         if (!mode) {
                             list->sceneOffsetEnd += list->sceneCount;
-                            sceneInfo.categoryCount++;
                         }
                     }
                 }

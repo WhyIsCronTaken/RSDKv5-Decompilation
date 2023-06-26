@@ -119,7 +119,7 @@ struct VideoSettings {
     int32 shaderID;
     int32 screenCount;
     uint32 dimTimer;
-    int32 dimLimit;
+    uint32 dimLimit;
     float dimMax;
     float dimPercent;
     float viewportW;
@@ -207,6 +207,7 @@ public:
     static void UpdateFPSCap();
 
     // Public since it's needed for the ModAPI
+    static bool InitShaders();
     static void LoadShader(const char *fileName, bool32 linear);
 
     // ====================
@@ -232,7 +233,6 @@ public:
     static float2 viewSize;
 
 private:
-    static bool InitShaders();
     static bool SetupRendering();
     static void InitVertexBuffer();
     static bool InitGraphicsAPI();
@@ -244,12 +244,12 @@ private:
 #include "DX9/DX9RenderDevice.hpp"
 #elif RETRO_RENDERDEVICE_DIRECTX11
 #include "DX11/DX11RenderDevice.hpp"
-#elif RETRO_RENDERDEVICE_NX
-#include "NX/NXRenderDevice.hpp"
 #elif RETRO_RENDERDEVICE_SDL2
 #include "SDL2/SDL2RenderDevice.hpp"
 #elif RETRO_RENDERDEVICE_GLFW
 #include "GLFW/GLFWRenderDevice.hpp"
+#elif RETRO_RENDERDEVICE_VK
+#include "Vulkan/VulkanRenderDevice.hpp"
 #elif RETRO_RENDERDEVICE_EGL
 #include "EGL/EGLRenderDevice.hpp"
 #endif
@@ -368,7 +368,7 @@ inline void SetDrawGroupProperties(uint8 drawGroup, bool32 sorted, void (*hookCB
     }
 }
 
-void SwapDrawListEntries(uint8 drawGroup, uint16 slot1, uint16 slot2, int32 count);
+void SwapDrawListEntries(uint8 drawGroup, uint16 slot1, uint16 slot2, uint16 count);
 
 void FillScreen(uint32 color, int32 alphaR, int32 alphaG, int32 alphaB);
 

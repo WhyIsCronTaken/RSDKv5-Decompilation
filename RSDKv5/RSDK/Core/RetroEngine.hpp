@@ -65,6 +65,11 @@ enum GameRegions {
 #undef __linux__
 #endif
 
+#ifdef _INTELLISENSE_ANDROID
+#undef _WIN32
+#undef _LIBCPP_MSVCRT_LIKE
+#endif
+
 #ifndef RETRO_USE_ORIGINAL_CODE
 #define RETRO_USE_ORIGINAL_CODE (0)
 #endif
@@ -93,7 +98,7 @@ enum GameRegions {
 #define RETRO_STANDARD (0)
 #define RETRO_MOBILE   (1)
 
-#define sprintf_s(x, _, ...) sprintf(x, __VA_ARGS__)
+#define sprintf_s(x, _, ...) snprintf(x, _, __VA_ARGS__)
 
 #if defined _WIN32
 #undef sprintf_s
@@ -161,20 +166,24 @@ enum GameRegions {
 // ============================
 #define RETRO_RENDERDEVICE_DIRECTX9  (0)
 #define RETRO_RENDERDEVICE_DIRECTX11 (0)
-#define RETRO_RENDERDEVICE_NX        (0)
 // CUSTOM
 #define RETRO_RENDERDEVICE_SDL2 (0)
 #define RETRO_RENDERDEVICE_GLFW (0)
+#define RETRO_RENDERDEVICE_VK   (0)
 #define RETRO_RENDERDEVICE_EGL  (0)
 
 // ============================
 // AUDIO DEVICE BACKENDS
 // ============================
 #define RETRO_AUDIODEVICE_XAUDIO (0)
-#define RETRO_AUDIODEVICE_NX     (0)
 // CUSTOM
+#ifndef RETRO_AUDIODEVICE_SDL2
 #define RETRO_AUDIODEVICE_SDL2 (0)
+#endif
 #define RETRO_AUDIODEVICE_OBOE (0)
+#ifndef RETRO_AUDIODEVICE_PORT
+#define RETRO_AUDIODEVICE_PORT (0)
+#endif
 
 // ============================
 // INPUT DEVICE BACKENDS
@@ -268,22 +277,34 @@ enum GameRegions {
 #undef RETRO_INPUTDEVICE_RAWINPUT
 #define RETRO_INPUTDEVICE_RAWINPUT (1)
 
-#elif defined(RSDK_USE_GL3)
+#elif defined(RSDK_USE_OGL)
 #undef RETRO_RENDERDEVICE_GLFW
 #define RETRO_RENDERDEVICE_GLFW (1)
 
 #undef RETRO_INPUTDEVICE_GLFW
 #define RETRO_INPUTDEVICE_GLFW (1)
-#else
-#error One of RSDK_USE_DX9, RSDK_USE_DX11, RSDK_USE_SDL2, or RSDK_USE_GL3 must be defined.
+
+#elif defined(RSDK_USE_VK)
+#undef RETRO_RENDERDEVICE_VK
+#define RETRO_RENDERDEVICE_VK (1)
+
+#if defined(VULKAN_USE_GLFW)
+#undef RETRO_INPUTDEVICE_GLFW
+#define RETRO_INPUTDEVICE_GLFW (1)
 #endif
 
-#if !defined(_MINGW) && !defined(RSDK_USE_SDL2)
+#else
+#error One of RSDK_USE_DX9, RSDK_USE_DX11, RSDK_USE_SDL2, or RSDK_USE_OGL must be defined.
+#endif
+
+#if !RETRO_AUDIODEVICE_PORT
+#if !RSDK_USE_SDL2
 #undef RETRO_AUDIODEVICE_XAUDIO
 #define RETRO_AUDIODEVICE_XAUDIO (1)
 #else
 #undef RETRO_AUDIODEVICE_SDL2
 #define RETRO_AUDIODEVICE_SDL2 (1)
+#endif
 #endif
 
 #elif RETRO_PLATFORM == RETRO_XB1
@@ -299,24 +320,39 @@ enum GameRegions {
 
 #elif RETRO_PLATFORM == RETRO_LINUX
 
+#if !RETRO_AUDIODEVICE_SDL2
+#undef RETRO_AUDIODEVICE_PORT
+#define RETRO_AUDIODEVICE_PORT (1)
+#endif
+
 #ifdef RSDK_USE_SDL2
 #undef RETRO_RENDERDEVICE_SDL2
 #define RETRO_RENDERDEVICE_SDL2 (1)
-#undef RETRO_AUDIODEVICE_SDL2
-#define RETRO_AUDIODEVICE_SDL2 (1)
 #undef RETRO_INPUTDEVICE_SDL2
 #define RETRO_INPUTDEVICE_SDL2 (1)
 
-#elif defined(RSDK_USE_GL3)
+#undef RETRO_AUDIODEVICE_PORT
+#define RETRO_AUDIODEVICE_PORT (0)
+#undef RETRO_AUDIODEVICE_SDL2
+#define RETRO_AUDIODEVICE_SDL2 (1)
+
+#elif defined(RSDK_USE_OGL)
 #undef RETRO_RENDERDEVICE_GLFW
 #define RETRO_RENDERDEVICE_GLFW (1)
 #undef RETRO_INPUTDEVICE_GLFW
 #define RETRO_INPUTDEVICE_GLFW (1)
-#undef RETRO_AUDIODEVICE_SDL2
-#define RETRO_AUDIODEVICE_SDL2 (1)
+
+#elif defined(RSDK_USE_VK)
+#undef RETRO_RENDERDEVICE_VK
+#define RETRO_RENDERDEVICE_VK (1)
+
+#if defined(VULKAN_USE_GLFW)
+#undef RETRO_INPUTDEVICE_GLFW
+#define RETRO_INPUTDEVICE_GLFW (1)
+#endif
 
 #else
-#error RSDK_USE_SDL2 or RSDK_USE_GL3 must be defined.
+#error RSDK_USE_SDL2, RSDK_USE_OGL or RSDK_USE_VK must be defined.
 #endif //! RSDK_USE_SDL2
 
 #elif RETRO_PLATFORM == RETRO_SWITCH
@@ -332,7 +368,7 @@ enum GameRegions {
 #undef RETRO_INPUTDEVICE_SDL2
 #define RETRO_INPUTDEVICE_SDL2 (1)
 
-#elif defined(RSDK_USE_GL3)
+#elif defined(RSDK_USE_OGL)
 #undef RETRO_RENDERDEVICE_EGL
 #define RETRO_RENDERDEVICE_EGL (1)
 #undef RETRO_INPUTDEVICE_NX
@@ -340,16 +376,8 @@ enum GameRegions {
 #undef RETRO_AUDIODEVICE_SDL2
 #define RETRO_AUDIODEVICE_SDL2 (1)
 
-#elif defined(RSDK_USE_NX)
-#undef RETRO_RENDERDEVICE_NX
-#define RETRO_RENDERDEVICE_NX (1)
-#undef RETRO_INPUTDEVICE_NX
-#define RETRO_INPUTDEVICE_NX (1)
-#undef RETRO_AUDIODEVICE_NX
-#define RETRO_AUDIODEVICE_NX (1)
 #else
-
-#error RSDK_USE_NX, RSDK_USE_SDL2, or RSDK_USE_GL3 must be defined.
+#error RSDK_USE_SDL2 or RSDK_USE_OGL must be defined.
 #endif //! RSDK_USE_SDL2
 
 #undef RETRO_INPUTDEVICE_KEYBOARD
@@ -358,7 +386,7 @@ enum GameRegions {
 
 #elif RETRO_PLATFORM == RETRO_ANDROID
 
-#if defined RSDK_USE_GL3
+#if defined RSDK_USE_OGL
 #undef RETRO_RENDERDEVICE_EGL
 #define RETRO_RENDERDEVICE_EGL (1)
 #undef RETRO_INPUTDEVICE_PDBOAT
@@ -366,7 +394,7 @@ enum GameRegions {
 #undef RETRO_AUDIODEVICE_OBOE
 #define RETRO_AUDIODEVICE_OBOE (1)
 #else
-#error RSDK_USE_GL3 must be defined.
+#error RSDK_USE_OGL must be defined.
 #endif
 
 #elif RETRO_PLATFORM == RETRO_OSX || RETRO_PLATFORM == RETRO_iOS
@@ -384,17 +412,19 @@ enum GameRegions {
 
 #if RETRO_PLATFORM == RETRO_WIN || RETRO_PLATFORM == RETRO_UWP
 
+// All windows systems need windows API for LoadLibrary()
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
 #if RETRO_AUDIODEVICE_XAUDIO
 #include <XAudio2.h>
+#elif RETRO_AUDIODEVICE_PORT
+#include <portaudio.h>
 #endif
 
 #if RETRO_INPUTDEVICE_XINPUT
 #include <Xinput.h>
 #endif
-
-// All windows systems need windows API for LoadLibrary()
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
 
 #if RETRO_RENDERDEVICE_DIRECTX9 || RETRO_RENDERDEVICE_DIRECTX11
 #include <timeapi.h>
@@ -413,6 +443,14 @@ enum GameRegions {
 #elif RETRO_RENDERDEVICE_GLFW
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+
+#elif RETRO_RENDERDEVICE_VK
+
+#ifdef VULKAN_USE_GLFW
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+#endif
+
 #endif
 
 #endif // ! RETRO_WIN
@@ -425,18 +463,35 @@ enum GameRegions {
 #include "cocoaHelpers.hpp"
 #elif RETRO_PLATFORM == RETRO_LINUX || RETRO_PLATFORM == RETRO_SWITCH
 
+#if RETRO_AUDIODEVICE_PORT
+#include <portaudio.h>
+#endif
+
 #if RETRO_RENDERDEVICE_GLFW
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #elif RETRO_RENDERDEVICE_EGL
 #include <glad/glad.h>
-#include <EGL/egl.h> // EGL library
+#include <EGL/egl.h>    // EGL library
 #include <EGL/eglext.h> // EGL extensions
+
+#elif RETRO_RENDERDEVICE_VK
+#if RETRO_PLATFORM == RETRO_LINUX
+
+#ifdef VULKAN_USE_GLFW
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+#endif
+
+#endif
 #endif
 
 #if RETRO_PLATFORM == RETRO_SWITCH
 #define PrintConsole _PrintConsole
 #include <switch.h>
+extern "C" {
+#include <dyn.h>
+}
 #undef PrintConsole
 #endif
 
@@ -444,7 +499,7 @@ enum GameRegions {
 
 #if RETRO_RENDERDEVICE_EGL
 #include <EGL/egl.h> // EGL library
-#include <GLES3/gl31.h>
+#include <GLES2/gl2.h>
 #endif
 
 #include <androidHelpers.hpp>
@@ -504,8 +559,10 @@ enum GameRegions {
 
 #if !RETRO_REV0U
 #define ENGINE_VERSION (5)
+#define ENGINE_V_NAME  "v5"
 #else
 #define ENGINE_VERSION (engine.version)
+#define ENGINE_V_NAME  "v5U"
 #endif
 
 namespace RSDK
@@ -554,6 +611,8 @@ struct RetroEngine {
     int32 fastForwardSpeed    = 8;
     bool32 frameStep          = false;
     bool32 showPaletteOverlay = false;
+    uint8 showUpdateRanges    = 0;
+    uint8 showEntityInfo      = 0;
     bool32 drawGroupVisible[DRAWGROUP_COUNT];
 
     // Image/Video support
@@ -563,16 +622,16 @@ struct RetroEngine {
     bool32 (*skipCallback)() = NULL;
 
     bool32 streamsEnabled = true;
-    float streamVolume    = 1.0;
-    float soundFXVolume   = 1.0;
+    float streamVolume    = 1.0f;
+    float soundFXVolume   = 1.0f;
 };
 
 extern RetroEngine engine;
 
 #if RETRO_REV02
-typedef void (*LogicLinkHandle)(GameInfo *info);
+typedef void (*LogicLinkHandle)(EngineInfo *info);
 #else
-typedef void (*LogicLinkHandle)(GameInfo info);
+typedef void (*LogicLinkHandle)(EngineInfo info);
 #endif
 
 extern LogicLinkHandle linkGameLogic;

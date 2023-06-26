@@ -59,7 +59,8 @@ void RSDK::Legacy::v4::ProcessStage(void)
             stageMode         = STAGEMODE_NORMAL;
 
 #if RETRO_USE_MOD_LOADER
-            RefreshModFolders();
+            if (devMenu.modsChanged)
+                RefreshModFolders();
 #endif
             ResetBackgroundSettings();
             LoadStageFiles();
@@ -1014,6 +1015,10 @@ void RSDK::Legacy::v4::SetPlayerScreenPosition(Entity *target)
         }
         cameraLockedY = false;
     }
+    else if (cameraLockedY) {
+        yPosDif             = 0;
+        currentCamera->ypos = targetY;
+    }
     else if (targetY <= currentCamera->ypos) {
         yPosDif = targetY - currentCamera->ypos;
         if (targetY - currentCamera->ypos <= 0) {
@@ -1561,7 +1566,8 @@ void RSDK::Legacy::v4::SetPlayerHLockedScreenPosition(Entity *target)
         cameraLockedY = false;
     }
     else if (cameraLockedY) {
-        camScroll = 0;
+        camScroll           = 0;
+        currentCamera->ypos = targetY;
     }
     else if (targetY > currentCamera->ypos) {
         camScroll = targetY - currentCamera->ypos;
